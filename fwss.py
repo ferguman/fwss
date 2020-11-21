@@ -1,4 +1,5 @@
 import asyncio
+from python.ws_parser import ws_parser
 
 # TODO - Create an MQTT client.
 # Maintain a list of subscribers and the topic that they want to subsribe  on
@@ -18,6 +19,7 @@ class Fwss(asyncio.Protocol):
         print('Connection from {}'.format(peername))
         self.transport = transport
         self.state = 'CONNECTING'
+        self.parser = ws_parser()
 
     def data_received(self, data):
 
@@ -26,7 +28,7 @@ class Fwss(asyncio.Protocol):
         print('State: {}'.format(self.state))
 
         if (self.state == 'CONNECTING'):
-           if ('GET /wss/ HTTP/1.1\r\n' == message[0:20]):
+           if self.parser.is_valid_connection_request(message):
               # send the websocket upgrade successful response.
               print('foobar')
               response = b'HTTP/1.1 501 Not Implemented\r\n\r\n'
