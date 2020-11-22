@@ -1,5 +1,7 @@
+# fwss - Fop Web Socket Server
+
 import asyncio
-from python.ws_parser import ws_parser
+from python.wsc import Wsc 
 
 # TODO - Create an MQTT client.
 # Maintain a list of subscribers and the topic that they want to subsribe  on
@@ -12,45 +14,31 @@ from python.ws_parser import ws_parser
 #    sub(topic, credentials) -> can do, queue
 #    pub(topic credentials ) -> can do, queue
 
+# This class controls the TCP/IP connection.
+# Create a new web socket controller (wsc) for each connection.
+# Pass data to the wsc
+# Close the connection when the wsc so instructs
+#
 class Fwss(asyncio.Protocol):
 
     def connection_made(self, transport):
         peername = transport.get_extra_info('peername')
         print('Connection from {}'.format(peername))
         self.transport = transport
-        self.state = 'CONNECTING'
-        self.parser = ws_parser()
+        self.wsc = Wsc()
 
     def data_received(self, data):
 
         message = data.decode()
         print('Data received: {!r}'.format(message))
-        print('State: {}'.format(self.state))
+        self.wsc.process_data(message)
 
-        if (self.state == 'CONNECTING'):
-           if self.parser.is_valid_connection_request(message):
-              # send the websocket upgrade successful response.
-              print('foobar')
-              response = b'HTTP/1.1 501 Not Implemented\r\n\r\n'
-              print('response: {!r}'.format(response))
-              self.transport.write(response)
-              print('Close the client socket')
-              self.transport.close()
-           else:
-              response = b'HTTP/1.1 501 Not Implemented\r\n\r\n'
-              print('response: {!r}'.format(response))
-              self.transport.write(response)
-              print('Close the client socket')
-              self.transport.close()
-        else:
-           # it's a datagram or a bogus message
-           #Send a failure response
-           response = b'HTTP/1.1 501 Not Implemented\r\n\r\n'
-           print('response: {!r}'.format(response))
-           self.transport.write(response)
-           print('Close the client socket')
+        if (self.wsc.response):
+           self.transport.write(self.wsc.response)
+        
+        if (self.wsc.close):
            self.transport.close()
-
+        
 loop = asyncio.get_event_loop()
 
 # Each client connection will create a new protocol instance
