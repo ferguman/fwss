@@ -30,6 +30,55 @@ class Wsc():
          print('This server only supports HTTP/1.1')
          return False
 
+      return True
+
+   def log_print(self, s:str) -> str:
+      if s:
+         if (len(s) <= 120):
+            return s
+         else:
+            return s[0:120] + '...'
+      else:
+         return s 
+
+   #TODO:  Make the max number of headers and max line length configuration items, so that users can tune them if necessary.
+   def extract_headers(self, lines:"array of request lines") -> dict:
+      headers = {}
+      line_count = 0
+      for line in lines:
+
+          # Don't accept a lot of headers
+          if line_count > 30:
+             print('This implementation does not accept more than 30 headers. Change the code if necessary to accept more.')
+             return None
+          # Don't accept hugely long lines
+          if len(line) > 4000:
+             print('This implementation does accept lines longer than 4000. Change the code if necessary to accept more.')
+             return None
+
+          line_parts = line.strip().split(':', maxsplit=1 )
+          if (len(line_parts) != 2):
+             print('illegal header {}... -> must be 2 parts when split on :'.format(self.log_print(line)))
+             return None 
+
+          # Store same named header rows in an array within the dictionary
+          key = line_parts[0].strip() 
+          if key in headers:
+             if isinstance(headers[key],list):
+                headers[key].append(line_parts[1].strip())
+             else:
+                header_list = []
+                header_list.append(headers[key])
+                header_list.append(line_parts[1].strip())
+                headers[key] = header_list
+          else:
+             headers[key] = line_parts[1].strip()
+
+          line_count = line_count + 1
+
+      print(headers)
+      return headers 
+
    def is_valid_connection_request(self, data):
       
       # Create an array containing each line of the request.
@@ -48,8 +97,12 @@ class Wsc():
       if(not self.is_valid_get_request(self.request_lines[0])):
          return False
 
-      # TODO parse the header fields into a dictionary at this point. 
-      
+      # Parse the header fields into a dictionary.
+      if (not self.extract_headers(self.request_lines[1:-2])):
+         return False
+
+      # At this point we have verifid the get request and we have all the headers in a dictionary.
+      # TODO - validate the headers and return them if things look good, otherwise return None
 
       return False
 
