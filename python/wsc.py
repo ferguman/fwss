@@ -1,5 +1,7 @@
 # wsc -> Web Socket Controller
 from enum import Enum
+from base64 import b64decode
+import logging
 
 class Wsc():
 
@@ -59,10 +61,11 @@ class Wsc():
           line_parts = line.strip().split(':', maxsplit=1 )
           if (len(line_parts) != 2):
              print('illegal header {}... -> must be 2 parts when split on :'.format(self.log_print(line)))
-             return None 
+             self.opening_handshake_headers = None
+             return False 
 
           # Store same named header rows in an array within the dictionary
-          key = line_parts[0].strip() 
+          key = line_parts[0].strip().lower() 
           if key in headers:
              if isinstance(headers[key],list):
                 headers[key].append(line_parts[1].strip())
@@ -76,8 +79,50 @@ class Wsc():
 
           line_count = line_count + 1
 
-      print(headers)
-      return headers 
+      self.opening_handshake_headers = headers 
+      return True 
+
+   def read_client_opening_handshake(self):
+      # Root through the header dictionary and see if you can put together a valid Web Socket opening handshake.
+
+      print(self.opening_handshake_headers)
+      if not 'host' in self.opening_handshake_headers:
+         logging.warning('No host header found')
+         
+      #TODO - make the allowed host black list a configuration item
+      if not self.opening_handshake_headers['host'] == '127.0.0.1:8888':
+          logging.warning('The only allowed hosts are: 127.0.0.1:8888')
+          return False
+      
+      if not ('upgrade' in self.opening_handshake_headers and self.opening_handshake_headers['upgrade'].lower() == 'websocket'):
+          logging.warning('One and only one upgrade host header with a value of websocket was not found') 
+          return False
+      
+      if not ('connection' in self.opening_handshake_headers and self.opening_handshake_headers['connection'].lower() == 'upgrade'):
+          logging.warning('One and only one connection host header with a value of upgrade was not found') 
+          return False
+
+      if ('sec-websocket-key' in self.opening_handshake_headers and isinstance(self.opening_handshake_headers['sec-websocket-key'], str)):
+          try:
+             self.sec_websocket_key_decoded = b64decode(self.opening_handshake_headers['sec-websocket-key'], validate=True)
+             if len(self.sec_websocket_key_decoded) == 16:
+                pass
+             else:
+                logging.warning('sec-websocket-key ({} bytes long) must be 16 bytes long.'.format(len(self.sec_websocket_key_decoded)))
+                return False
+          except Exception as ex:
+             logging.warning('{}'.format(ex))
+             logging.warning('sec-websocket-key header value: {} cannot be b64 decoded.'.format(self.log_print(self.opening_handshake_headers['sec-websocket-key']))) 
+             return False
+      else:
+          logging.warning('One and only one sec-websocket-key host header was not found') 
+          return False
+
+      # TODO - Implement the rest of the header checks 
+      
+
+
+      return False
 
    def is_valid_connection_request(self, data):
       
@@ -86,23 +131,20 @@ class Wsc():
       # Arbitrarily cap it at 100 lines.
       self.request_lines = data.split('\r\n', 101)
 
-      # TODO - Log an error if 101 lines were found. Test using 3 line max length
       # TODO - Logo an error if there is too much data in the request.
       # TOTO - Log an error if there are not two blank lines at the end of the input
 
-      #- print("{} lines found in the request".format(len(self.request_lines)))
-      #- print(['{}'.format(var) for var in self.request_lines])
-      #- print('\r\n')
-
-      if(not self.is_valid_get_request(self.request_lines[0])):
+      if not self.is_valid_get_request(self.request_lines[0]):
          return False
 
       # Parse the header fields into a dictionary.
-      if (not self.extract_headers(self.request_lines[1:-2])):
+      if not self.extract_headers(self.request_lines[1:-2]):
          return False
 
       # At this point we have verifid the get request and we have all the headers in a dictionary.
       # TODO - validate the headers and return them if things look good, otherwise return None
+      if not self.read_client_opening_handshake():
+         return False
 
       return False
 
