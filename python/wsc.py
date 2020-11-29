@@ -1,7 +1,10 @@
 # wsc -> Web Socket Controller
-from enum import Enum
+
 from base64 import b64decode
+from enum import Enum
+from http import HTTPStatus
 import logging
+logging.basicConfig(level=logging.INFO)
 
 class Wsc():
 
@@ -9,6 +12,16 @@ class Wsc():
 
    def __init__(self): 
       self.state = Wsc.states.WAITING_FOR_UPGRADE_REQUEST 
+
+      # Client opening handshake
+      self.opening_handshake_headers = None
+
+      # Server opending handshake
+      # abort              boolean
+      # http_status_code   HTTPStatus
+      # headers            dictionary of headers 
+      self.server_opening_handshake = {}
+      self.server_opening_handshake['headers'] = {}
 
    def is_valid_get_request(self, data):
 
@@ -25,7 +38,9 @@ class Wsc():
       if (first_line_parts[1] != '/wss/'):
           #TODO - add ability to conifgure one or more legal resources and
           #       updated the code to check against that list
-          print('This server only supports the /wss/ resource name')
+          logging.warning('This server only supports the /wss/ resource')
+          self.server_opening_handshake['http_status_code'] = HTTPStatus.NOT_FOUND
+          self.server_opening_handshake['abort'] = True
           return False
 
       if (first_line_parts[2] != 'HTTP/1.1'):
@@ -45,6 +60,7 @@ class Wsc():
 
    #TODO:  Make the max number of headers and max line length configuration items, so that users can tune them if necessary.
    def extract_headers(self, lines:"array of request lines") -> dict:
+      self.opening_handshake_headers = None 
       headers = {}
       line_count = 0
       for line in lines:
@@ -52,16 +68,15 @@ class Wsc():
           # Don't accept a lot of headers
           if line_count > 30:
              print('This implementation does not accept more than 30 headers. Change the code if necessary to accept more.')
-             return None
+             return False 
           # Don't accept hugely long lines
           if len(line) > 4000:
-             print('This implementation does accept lines longer than 4000. Change the code if necessary to accept more.')
-             return None
+             print('This implementation does not accept lines longer than 4000. Change the code if necessary to accept more.')
+             return False 
 
           line_parts = line.strip().split(':', maxsplit=1 )
           if (len(line_parts) != 2):
              print('illegal header {}... -> must be 2 parts when split on :'.format(self.log_print(line)))
-             self.opening_handshake_headers = None
              return False 
 
           # Store same named header rows in an array within the dictionary
@@ -75,7 +90,7 @@ class Wsc():
                 header_list.append(line_parts[1].strip())
                 headers[key] = header_list
           else:
-             headers[key] = line_parts[1].strip()
+              headers[key] = line_parts[1].strip()
 
           line_count = line_count + 1
 
@@ -118,13 +133,35 @@ class Wsc():
           logging.warning('One and only one sec-websocket-key host header was not found') 
           return False
 
-      # TODO - Implement the rest of the header checks 
+      if not ('sec-websocket-version' in self.opening_handshake_headers):
+          logging.warning('No sec-websocket-version header found.')
+          return False
+         
+      if ('origin' in self.opening_handshake_headers):
+          logging.info('orgin header {} found'.format(self.log_print(self.opening_handshake_headers['origin'])))
+          # TODO - Implement origin enforcement here
+
+      return True 
+
+   def make_server_opening_handshake(self):
+
+      # This server only understands version 13 of the websocket protocol
+      if not (self.opening_handshake_headers['sec-websocket-version'] == '13'):
+         logging.warning('sec-websocket-version host header version was not 13') 
+         self.server_opening_handshake['http_status_code'] = HTTPStatus.UPGRADE_REQUIRED
+         self.server_opening_handshake['headers']['Sec-WebSocket-Version'] = '13'
+         self.server_opening_handshake['abort'] = True
+         return False
+
+      #TODO: Add the sub-protocol negotiation here.
+      # if their is no sub-protocal header than abort because this is a 
       
+               
+     
+     
 
 
-      return False
-
-   def is_valid_connection_request(self, data):
+   def read_client_upgrade_request(self, data):
       
       # Create an array containing each line of the request.
       # Note that after the split there should be two blank lines at the end.
@@ -140,27 +177,64 @@ class Wsc():
       # Parse the header fields into a dictionary.
       if not self.extract_headers(self.request_lines[1:-2]):
          return False
-
+      
       # At this point we have verifid the get request and we have all the headers in a dictionary.
-      # TODO - validate the headers and return them if things look good, otherwise return None
+      # TODO - Add the security checks here. Start with a flat file holding encrypted usernames and encrytped passwords. 
+      #        Actually security should be imposed before any processing is done so move this stuff to
+      #        to be sooner in the process.
       if not self.read_client_opening_handshake():
          return False
 
-      return False
+      # At this point we have a reasonable client handshake. We may still abort the connection but
+      # we will go ahead and build the server's handshake and during that build if need be an abort will
+      # be indicated. Note an abort may have a response and always closes the TCP/IP connection.
+      if not self.make_server_opening_handshake():
+         return False 
+
+      return True 
+
+   def make_response(self):
+      # TODO - Need to inspect opening handshake and make the appropriate response.
+      """-
+      # Server opending handshake
+      # abort              boolean
+      # http_status_code   HTTPStatus
+      # headers            dictionary of headers 
+      self.server_opening_handshake = {}
+      """
+      if 'abort' in self.server_opening_handshake and self.server_opening_handshake['abort'] == False:
+         self.close = False
+         logging.debug('Leave client socket open')
+      else:
+         self.close = True
+         logging.debug('Close the client socket')
+
+      if 'http_status_code' in self.server_opening_handshake:
+         self.response = 'HTTP/1.1 {} {}\r\n'.format(self.server_opening_handshake['http_status_code'].value,
+                                                     self.server_opening_handshake['http_status_code'].phrase).encode('utf-8')
+      else:
+         self.response = b'HTTP/1.1 501 Not Implemented\r\n'
+ 
+      if 'headers' in self.server_opening_handshake:
+         for key, value in self.server_opening_handshake['headers'].items():
+             if isinstance(value, list):
+                for header_value in value:
+                   self.response = self.response + '{}: {}\r\n'.format(key, header_value).encode('utf-8')
+             else:
+                self.response = self.response + '{}: {}\r\n'.format(key, value).encode('utf-8')
+
+      self.response = self.response + b'\r\n'
+
+      print('response: {!r}'.format(self.response))
 
    def process_data(self, message):
 
         print('State: {}'.format(self.state))
 
         if (self.state == Wsc.states.WAITING_FOR_UPGRADE_REQUEST):
-           if self.is_valid_connection_request(message):
-              # send the websocket upgrade successful response.
-              self.response = b'HTTP/1.1 501 Not Implemented\r\n\r\n'
-              print('response: {!r}'.format(self.response))
-              #- self.transport.write(response)
-              print('Close the client socket')
-              self.close = True
-              #- self.transport.close()
+           self.read_client_upgrade_request(message)
+           self.make_response()  
+           """-
            else:
               self.response = b'HTTP/1.1 501 Not Implemented\r\n\r\n'
               print('response: {!r}'.format(self.response))
@@ -168,6 +242,7 @@ class Wsc():
               print('Close the client socket')
               self.close = True
               #- self.transport.close()
+           """
         else:
            # TODO - Implement the other states 
            #Send a failure response
