@@ -6,12 +6,18 @@ from http import HTTPStatus
 import logging
 logging.basicConfig(level=logging.INFO)
 
+ALLOW_NULL_SUB_PROTOCOLS = True
+
+# OPEN -> See page 25 of RFC 6455
+class WebSocketConnectionStates(Enum):
+   WAITING_FOR_UPGRADE_REQUEST = 1
+   UPGRADED = 2
+   OPEN = 3
+
 class Wsc():
 
-   states = Enum('states', 'WAITING_FOR_UPGRADE_REQUEST UPGRADED') 
-
    def __init__(self): 
-      self.state = Wsc.states.WAITING_FOR_UPGRADE_REQUEST 
+      self.state = WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST 
 
       # Client opening handshake
       self.opening_handshake_headers = None
@@ -104,7 +110,7 @@ class Wsc():
       if not 'host' in self.opening_handshake_headers:
          logging.warning('No host header found')
          
-      #TODO - make the allowed host black list a configuration item
+      #TODO - make the allowed host white list a configuration item
       if not self.opening_handshake_headers['host'] == '127.0.0.1:8888':
           logging.warning('The only allowed hosts are: 127.0.0.1:8888')
           return False
@@ -154,12 +160,43 @@ class Wsc():
          return False
 
       #TODO: Add the sub-protocol negotiation here.
-      # if their is no sub-protocal header than abort because this is a 
-      
-               
-     
-     
-
+      # See RFC 6455 page(s): 18, 23, 58
+      # Map the null header field to the console.urbanspacefarms.com application
+      # The sub-protocol list may be sent on one header field as a comma seperated list or it may
+      # be sent as multiple sub-protocoal headers. 
+      # This implementation does not accept a mixture of the above.
+      # 	
+      if not 'sec-websocket-protocol' in self.opening_handshake_headers:
+         if ALLOW_NULL_SUB_PROTOCOLS:
+             # Do not return a sub-protocol header to the client. This signals the acceptance of a connection with no sub-protocol specified.
+             pass 
+         else:
+            logging.error('No sub-protocal header was detected. fwss is configured to require the Sec-WebSocket-Protocol header in the client handshake.') 
+            return False
+      # else
+      #    if one header field present
+      #       foreach sub-filed (comma seperated)
+      #          if sub filed values are less than configuration max length, not blank, and contain only characters in rage U+0021 to U+007E then
+      #             add sub filed to ordered list of sub protocols
+      #          else
+      #             log an error -> sub-protocol is too long, or is blank, or contains illegal characters
+      #             return False
+      #   else
+      #      foreach sub protocol header
+      #         if header value is less than configuration max length, not blank, does not contain a comma, and contain only characters in rage U+0021 to U+007E then
+      #            add sub field to ordered list of sub-protocols
+      #         else
+      #            log an error -> sub-protocol is too long, or is blank, or contains illegal characters, or there is a header field list and seperate headers
+      #                            which this implemenatation does not allow.
+      #            return False
+      #  At this point we have non-empty protocol list
+      #  debug log the list of of sub-protocols contained in the handshake
+      #   foreaach protocol - iterate them in order from first to last - See RFC 6455 page 18 paragraph 10. 
+      #   if sub-protocoal is acceptabel to this instance
+      #      set server handshake header value this sub-protocol value
+      #         return True
+      #
+       
 
    def read_client_upgrade_request(self, data):
       
@@ -169,7 +206,7 @@ class Wsc():
       self.request_lines = data.split('\r\n', 101)
 
       # TODO - Logo an error if there is too much data in the request.
-      # TOTO - Log an error if there are not two blank lines at the end of the input
+      # TODO - Log an error if there are not two blank lines at the end of the input
 
       if not self.is_valid_get_request(self.request_lines[0]):
          return False
@@ -201,6 +238,7 @@ class Wsc():
       # http_status_code   HTTPStatus
       # headers            dictionary of headers 
       self.server_opening_handshake = {}
+noris causa 
       """
       if 'abort' in self.server_opening_handshake and self.server_opening_handshake['abort'] == False:
          self.close = False
@@ -231,18 +269,14 @@ class Wsc():
 
         print('State: {}'.format(self.state))
 
-        if (self.state == Wsc.states.WAITING_FOR_UPGRADE_REQUEST):
+        if (self.state == WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST):
+           # read_client_upgrade_request will scan the client request and if the request is valid then values will be
+           # set in self.server_opening_handshake. The scanning process is halted at the first error found.
+           # If no values are set in self.server_opening_handshake then the 501 Not Implemented response will be
+           # returned.
            self.read_client_upgrade_request(message)
+           # make_reponse will scan the values in self.server_opening_handshake and create the appropriate HTTP response. 
            self.make_response()  
-           """-
-           else:
-              self.response = b'HTTP/1.1 501 Not Implemented\r\n\r\n'
-              print('response: {!r}'.format(self.response))
-              #- self.transport.write(response)
-              print('Close the client socket')
-              self.close = True
-              #- self.transport.close()
-           """
         else:
            # TODO - Implement the other states 
            #Send a failure response
