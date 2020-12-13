@@ -1,57 +1,64 @@
-# fwss - Fop Web Socket Server
-
 import asyncio
-from python.wsc import Wsc 
+from enum import Enum
 
-# TODO - Create an MQTT client.
-# Maintain a list of subscribers and the topic that they want to subsribe  on
-# or publish on.
-# | subscriber                         | topic                      | pub   | sub   | credentials | 
-# | the echo server that is subscribed | the topic e.g. /fs1/events | queue | queue | credentials |
-#
-# Will need to listen for incoming and outgoing commands
-# Cmds -> 
-#    sub(topic, credentials) -> can do, queue
-#    pub(topic credentials ) -> can do, queue
+class WebSocketConnectionStates(Enum):
+   WAITING_FOR_UPGRADE_REQUEST = 1
+   UPGRADED = 2
+   OPEN = 3
 
-# This class controls the TCP/IP connection.
-# Create a new web socket controller (wsc) for each connection.
-# Pass data to the wsc
-# Close the connection when the wsc so instructs
-#
-class Fwss(asyncio.Protocol):
 
-    def connection_made(self, transport):
-        peername = transport.get_extra_info('peername')
-        print('Connection from {}'.format(peername))
-        self.transport = transport
-        self.wsc = Wsc()
 
-    def data_received(self, data):
-        message = data.decode()
-        print('Data received: {!r}'.format(message))
-        self.wsc.process_data(message)
+async def ws_reader(reader, writer, state):
+   #TODO - implement reading of the upgrade request. leverage code in wsc.py
+   print('ws_reader started')
+   data = ''
 
-        if (self.wsc.response):
-           self.transport.write(self.wsc.response)
-        
-        if (self.wsc.close):
-           self.transport.close()
-        
-loop = asyncio.get_event_loop()
+   # wait for a connection upgrade request.
+   if state['conn_state'] == WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST:
+      #TODO - will need to put a timeout in here. No connection should be started without
+      #       an immediate upgrade request
+      while True:
+          cl = (await reader.readline()).decode()
+          data = data + cl
+          if cl == '\r\n': 
+             break 
+      #TODO - At this point the connection upgrade has been received so integrate wsc.py to verify the connection
+      #       upgrade data
+      print(data)
 
-# Each client connection will create a new protocol instance
-coro = loop.create_server(Fwss, '127.0.0.1', 8888)
-server = loop.run_until_complete(coro)
+   # Close the connection.
+   writer.close()
+   print('ws_reader ended')
 
-# Serve requests until Ctrl+C is pressed
-print('Serving on {}'.format(server.sockets[0].getsockname()))
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    pass
+async def ws_writer(writer, state):
+   print('ws_writer started')
+   # The writer has access to transport information.
+   print(f'transport info {writer.get_extra_info("socket")}')
+   print('ws_writer ended')
 
-# Close the server
-server.close()
-loop.run_until_complete(server.wait_closed())
-loop.close()
+async def connection(reader, writer):
+
+   state = {}
+   state['conn_state'] = WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST 
+
+   task1 = asyncio.create_task(ws_reader(reader, writer, state))
+   task2 = asyncio.create_task(ws_writer(writer, state))
+
+   # Both task1 and task are run conncurrently.
+   # TODO - each task is envisioned to have it's own sleepy loop in order to 
+   #        to allow bi-direction ws traffic.
+   await task1 
+   await task2 
+
+
+async def main():
+   server = await asyncio.start_server(connection, '127.0.0.1', 8888)
+
+   # addr is a tuple containing the IP number and port number
+   addr = server.sockets[0].getsockname()
+   print(f'serving on {addr}')
+
+   async with server:
+      await server.serve_forever()
+
+asyncio.run(main())
