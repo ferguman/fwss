@@ -1,5 +1,7 @@
 import asyncio
+from asyncio import Queue
 from enum import Enum
+from python.wsc import Wsc
 
 class WebSocketConnectionStates(Enum):
    WAITING_FOR_UPGRADE_REQUEST = 1
@@ -7,46 +9,78 @@ class WebSocketConnectionStates(Enum):
    OPEN = 3
 
 
+async def ws_reader(reader, writer, wsc, writer_queue, state):
 
-async def ws_reader(reader, writer, state):
    #TODO - implement reading of the upgrade request. leverage code in wsc.py
    print('ws_reader started')
    data = ''
 
-   # wait for a connection upgrade request.
-   if state['conn_state'] == WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST:
-      #TODO - will need to put a timeout in here. No connection should be started without
-      #       an immediate upgrade request
-      while True:
-          cl = (await reader.readline()).decode()
-          data = data + cl
-          if cl == '\r\n': 
-             break 
-      #TODO - At this point the connection upgrade has been received so integrate wsc.py to verify the connection
-      #       upgrade data
-      print(data)
+   while True:
 
-   # Close the connection.
-   writer.close()
+       # wait for a connection upgrade request.
+       if state['conn_state'] == WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST:
+           # wait for a completed connection upgrade
+           request = (await reader.readuntil(b'\r\n\r\n')).decode()
+           #TODO - remove this print
+           print(f'request: {request}')
+           wsc.process_upgrade_request(request)
+           # Put an upgrade request reply into the writer queue
+           # print(f'response: {wsc.response}')
+           await writer_queue.put(wsc.response)
+           # At this point if the upgrade request fails then close your loop becuase
+           # because the connection must be closed.
+           if wsc.close:
+              break
+
+       await asyncio.sleep(1)
+
+
    print('ws_reader ended')
 
-async def ws_writer(writer, state):
+async def ws_writer(writer, wsc, writer_queue, state):
    print('ws_writer started')
    # The writer has access to transport information.
    print(f'transport info {writer.get_extra_info("socket")}')
+
+   # TODO - Implement this loop
+   while True:
+
+      if (not writer_queue.empty()):
+         writer.write(await writer_queue.get())
+         await writer.drain()
+      
+         if wsc.close:
+             writer.close()
+             break
+
+      await asyncio.sleep(1)
+
    print('ws_writer ended')
+      
+   #    for each item in the outgoing queue
+   #    await write_item
+   #    if writer queue has entry
+   #       if entry is wsc reponse
+   #          send the response
+   #          if close is needed then break 
+   #
 
 async def connection(reader, writer):
+
+   wsc = Wsc()
+   writer_queue = Queue()
 
    state = {}
    state['conn_state'] = WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST 
 
-   task1 = asyncio.create_task(ws_reader(reader, writer, state))
-   task2 = asyncio.create_task(ws_writer(writer, state))
+   task1 = asyncio.create_task(ws_reader(reader, writer, wsc, writer_queue, state))
+   task2 = asyncio.create_task(ws_writer(writer, wsc, writer_queue, state))
 
    # Both task1 and task are run conncurrently.
-   # TODO - each task is envisioned to have it's own sleepy loop in order to 
-   #        to allow bi-direction ws traffic.
+   # TODO - The writer (task2) will have a sleepy loop that
+   #        that looks for outgoing traffic such as server
+   #        responses to data reads and asyncrouns events such 
+   #        as incoming MQQT messages.
    await task1 
    await task2 
 

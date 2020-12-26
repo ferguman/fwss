@@ -265,6 +265,15 @@ noris causa
 
       print('response: {!r}'.format(self.response))
 
+   def process_upgrade_request(self, request):
+      # Scan the client request and if the request is valid then values will be
+      # set in self.server_opening_handshake. The scanning process is halted at the first error found.
+      # If no values are set in self.server_opening_handshake then the 501 Not Implemented response
+      # should be returned.
+      self.read_client_upgrade_request(request)
+      # make_reponse will scan the values in self.server_opening_handshake and create the appropriate HTTP response. 
+      self.make_response()  
+
    def process_data(self, message):
 
         print('State: {}'.format(self.state))
