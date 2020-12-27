@@ -1,23 +1,17 @@
 # wsc -> Web Socket Controller
 
-from base64 import b64decode
+from base64 import b64decode, b64encode
 from enum import Enum
+from hashlib import sha1
 from http import HTTPStatus
 import logging
-logging.basicConfig(level=logging.INFO)
+#- logging.basicConfig(level=logging.INFO)
 
 ALLOW_NULL_SUB_PROTOCOLS = True
-
-# OPEN -> See page 25 of RFC 6455
-class WebSocketConnectionStates(Enum):
-   WAITING_FOR_UPGRADE_REQUEST = 1
-   UPGRADED = 2
-   OPEN = 3
 
 class Wsc():
 
    def __init__(self): 
-      self.state = WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST 
 
       # Client opening handshake
       self.opening_handshake_headers = None
@@ -27,6 +21,7 @@ class Wsc():
       # http_status_code   HTTPStatus
       # headers            dictionary of headers 
       self.server_opening_handshake = {}
+      self.server_opening_handshake['abort'] = True
       self.server_opening_handshake['headers'] = {}
 
    def is_valid_get_request(self, data):
@@ -196,7 +191,23 @@ class Wsc():
       #      set server handshake header value this sub-protocol value
       #         return True
       #
-       
+
+      #TODO: Add the extenstion processing here. For now leave the extension header out of hte response but in the future
+      #      add processing to look at the client extensions that are requested and from the client's list parrot back
+      #      the extensions that are supported by this server.
+      
+      self.server_opening_handshake['headers']['Connection'] = 'Upgrade'
+      self.server_opening_handshake['headers']['Upgrade'] = 'websocket'
+
+      # TODO - need a way to test this algorthim
+      accept_nonce = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+      self.server_opening_handshake['headers']['Sec-WebSocket-Accept'] = b64encode(
+            sha1(self.opening_handshake_headers['sec-websocket-key'].encode('utf-8') + accept_nonce).hexdigest().encode('utf-8'))
+
+      self.server_opening_handshake['http_status_code'] = HTTPStatus.SWITCHING_PROTOCOLS
+
+      return True
+
 
    def read_client_upgrade_request(self, data):
       
@@ -209,10 +220,12 @@ class Wsc():
       # TODO - Log an error if there are not two blank lines at the end of the input
 
       if not self.is_valid_get_request(self.request_lines[0]):
+         logging.Info('Not a valid upgrade request')
          return False
 
       # Parse the header fields into a dictionary.
       if not self.extract_headers(self.request_lines[1:-2]):
+         logging.Info('Cannot extract headers')
          return False
       
       # At this point we have verifid the get request and we have all the headers in a dictionary.
@@ -220,6 +233,7 @@ class Wsc():
       #        Actually security should be imposed before any processing is done so move this stuff to
       #        to be sooner in the process.
       if not self.read_client_opening_handshake():
+         logging.Info('Not a valid opening handshake')
          return False
 
       # At this point we have a reasonable client handshake. We may still abort the connection but
@@ -228,18 +242,13 @@ class Wsc():
       if not self.make_server_opening_handshake():
          return False 
 
+      self.server_opening_handshake['abort'] = False
+      logging.info(f'Abort_1: {self.server_opening_handshake["abort"]}')
       return True 
 
    def make_response(self):
-      # TODO - Need to inspect opening handshake and make the appropriate response.
-      """-
-      # Server opending handshake
-      # abort              boolean
-      # http_status_code   HTTPStatus
-      # headers            dictionary of headers 
-      self.server_opening_handshake = {}
-noris causa 
-      """
+
+      logging.info(f'Abort_2: {self.server_opening_handshake["abort"]}')
       if 'abort' in self.server_opening_handshake and self.server_opening_handshake['abort'] == False:
          self.close = False
          logging.debug('Leave client socket open')
@@ -263,22 +272,25 @@ noris causa
 
       self.response = self.response + b'\r\n'
 
-      print('response: {!r}'.format(self.response))
+      logging.info('response: {!r}'.format(self.response))
 
    def process_upgrade_request(self, request):
       # Scan the client request and if the request is valid then values will be
       # set in self.server_opening_handshake. The scanning process is halted at the first error found.
       # If no values are set in self.server_opening_handshake then the 501 Not Implemented response
       # should be returned.
+      logging.info(f'Abort_3: {self.server_opening_handshake["abort"]}')
       self.read_client_upgrade_request(request)
+      logging.info(f'Abort_4: {self.server_opening_handshake["abort"]}')
       # make_reponse will scan the values in self.server_opening_handshake and create the appropriate HTTP response. 
       self.make_response()  
 
+   """-
    def process_data(self, message):
 
         print('State: {}'.format(self.state))
 
-        if (self.state == WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST):
+        if False #- (self.state == WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST):
            # read_client_upgrade_request will scan the client request and if the request is valid then values will be
            # set in self.server_opening_handshake. The scanning process is halted at the first error found.
            # If no values are set in self.server_opening_handshake then the 501 Not Implemented response will be
@@ -295,3 +307,4 @@ noris causa
            print('Close the client socket')
            self.close = True
            #- self.transport.close()
+   """
