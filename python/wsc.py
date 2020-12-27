@@ -201,8 +201,10 @@ class Wsc():
 
       # TODO - need a way to test this algorthim
       accept_nonce = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+      accept = sha1(self.opening_handshake_headers['sec-websocket-key'].encode('utf-8') + accept_nonce).digest()
+      logging.debug(f'sha1: {accept}')
       self.server_opening_handshake['headers']['Sec-WebSocket-Accept'] = b64encode(
-            sha1(self.opening_handshake_headers['sec-websocket-key'].encode('utf-8') + accept_nonce).hexdigest().encode('utf-8'))
+            sha1(self.opening_handshake_headers['sec-websocket-key'].encode('utf-8') + accept_nonce).digest())
 
       self.server_opening_handshake['http_status_code'] = HTTPStatus.SWITCHING_PROTOCOLS
 
