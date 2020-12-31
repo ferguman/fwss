@@ -30,13 +30,18 @@ async def ws_reader(reader, writer, wsc, writer_queue, state):
            if wsc.close:
               break
            else:
+              logging.info('changing state to OPEN')
               state['conn_state'] = WebSocketConnectionStates.OPEN
        elif state['conn_state'] == WebSocketConnectionStates.OPEN:
           #TODO will need to read the input one byte at a time (e.g. reader.read(1)) and pass
           #     each byte off to a new function (call it FrameReader) that assembles the incoming
           #     frame.  If the incoming frame is not legal then close the connection elsewise
           #     if the frame is done then pass the frame to a new class called FrameHandler.
-          pass
+          # Read a byte
+          request = await reader.read(4)
+          # log a byte
+          logging.debug(f'byte: {request.hex()}')
+          
 
        await asyncio.sleep(1)
 
