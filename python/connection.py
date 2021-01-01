@@ -3,12 +3,12 @@ from asyncio import Queue
 from enum import Enum
 import logging
 
+from python.settings import READ_LIMIT_PER_CONNECTION
 from python.wsc import Wsc
 
 class WebSocketConnectionStates(Enum):
    WAITING_FOR_UPGRADE_REQUEST = 1
-   #- UPGRADED = 2
-   OPEN = 3                           # OPEN -> See page 25 of RFC 6455
+   OPEN = 2                           # OPEN -> See page 25 of RFC 6455
 
 async def ws_reader(reader, writer, wsc, writer_queue, state):
 
@@ -20,7 +20,7 @@ async def ws_reader(reader, writer, wsc, writer_queue, state):
        if state['conn_state'] == WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST:
            # wait for a completed connection upgrade
            request = (await reader.readuntil(b'\r\n\r\n')).decode()
-           logging.debug(f'request: {request}')
+           #- logging.debug(f'request: {request}')
            wsc.process_upgrade_request(request)
            # Put an upgrade request reply into the writer queue
            # print(f'response: {wsc.response}')
@@ -38,10 +38,25 @@ async def ws_reader(reader, writer, wsc, writer_queue, state):
           #     frame.  If the incoming frame is not legal then close the connection elsewise
           #     if the frame is done then pass the frame to a new class called FrameHandler.
           # Read a byte
-          request = await reader.read(4)
-          # log a byte
-          logging.debug(f'byte: {request.hex()}')
-          
+          guard_counter = 0
+          while not reader.at_eof():
+
+             request = await reader.read(4)
+             # log a byte
+             logging.debug(f'byte: {request.hex()}')
+
+             # wsc.process_byte
+             # if wsc.close:
+             #    break
+             # if at_frame_end:
+             #    await writer_queue.put(process_frame(wsc.frame)
+             #    if close
+             #       break
+
+             # Don't deny service to the other tasks.
+             guard_counter += 1
+             if guard_counter >= READ_LIMIT_PER_CONNECTION:
+                break
 
        await asyncio.sleep(1)
 
