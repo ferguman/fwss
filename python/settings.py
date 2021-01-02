@@ -1,3 +1,5 @@
+# There is a test websockt client at https://www.websocket.org/echo.html
+
 ALLOW_NULL_SUB_PROTOCOLS = True   
 
 READ_LIMIT_PER_CONNECTION = 1000  #The maximum number of bytes to read per connection per loop -> This is intended to 

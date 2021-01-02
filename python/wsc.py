@@ -1,21 +1,17 @@
 # wsc -> Web Socket Controller
 
-"""-
-from base64 import b64decode, b64encode
-from enum import Enum
-from hashlib import sha1
-from http import HTTPStatus
-"""
 import logging
 
+from python.frame_reader import FrameReader
 from python.upgrade import Upgrade
 
 class Wsc():
 
-   def __init__(self): 
+   def __init__(self, connection): 
 
       self.upgrade = Upgrade()
-      self.close = True
+      self.frame_reader = FrameReader(connection)
+      self.close = False 
       self.response = None
 
    def process_upgrade_request(self, request):
@@ -38,3 +34,9 @@ class Wsc():
       self.response = self.upgrade.response
       # At this point if we need to negotiate the upgrade we leave self.upgrade in place otherwise
       # we set it to None. You get one upgrade per session.
+
+   def process_byte(self, next_byte):
+      # log a byte
+      self.frame_reader.process_byte(next_byte)
+      self.close = self.frame_reader.close
+
