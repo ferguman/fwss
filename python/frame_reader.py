@@ -7,8 +7,8 @@ class FrameParts(Enum):
 
 class FrameReader():
 
-   def __init__(self, connection):
-      self.connection = connection
+   def __init__(self, wsc):
+      self.wsc = wsc 
       self.extension_data = None
       self.application_data = None
       self.next_expected_frame_part = FrameParts.FIN
@@ -35,7 +35,8 @@ class FrameReader():
          logging.debug(f'RSVX: {self.extension_code}')
          # At this point we must make sure that the extension code is one that has been negotiated.
          # See RFC 6455 page 28
-         if not self.connection['is_valid_extension'](self.extension_code):
+         #- if not self.connection['is_valid_extension'](self.extension_code):
+         if not self.wsc.is_valid_extension(self.extension_code):
             logging.error('Invalid extension code. Will close the connection')
             self.close = True
             return

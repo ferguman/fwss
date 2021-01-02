@@ -1,16 +1,22 @@
 # wsc -> Web Socket Controller
 
+from enum import Enum
 import logging
 
 from python.frame_reader import FrameReader
 from python.upgrade import Upgrade
 
+class WebSocketConnectionStates(Enum):
+   WAITING_FOR_UPGRADE_REQUEST = 1
+   OPEN = 2                           # OPEN -> See page 25 of RFC 6455
+
 class Wsc():
 
-   def __init__(self, connection): 
+   def __init__(self): 
 
+      self.state = WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST 
       self.upgrade = Upgrade()
-      self.frame_reader = FrameReader(connection)
+      self.frame_reader = FrameReader(self)
       self.close = False 
       self.response = None
 
@@ -40,3 +46,12 @@ class Wsc():
       self.frame_reader.process_byte(next_byte)
       self.close = self.frame_reader.close
 
+
+   def is_valid_extension(self, extension_code):
+      logging.info('TODO - Implement extension validity checker')
+      return True
+
+   """-
+   def state(self):
+       return self.state
+   """

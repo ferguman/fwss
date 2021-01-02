@@ -4,23 +4,23 @@ from enum import Enum
 import logging
 
 from python.settings import READ_LIMIT_PER_CONNECTION
-from python.wsc import Wsc
+from python.wsc import WebSocketConnectionStates, Wsc
 
-class WebSocketConnectionStates(Enum):
-   WAITING_FOR_UPGRADE_REQUEST = 1
-   OPEN = 2                           # OPEN -> See page 25 of RFC 6455
+#- class WebSocketConnectionStates(Enum):
+#-    WAITING_FOR_UPGRADE_REQUEST = 1
+#-    OPEN = 2                           # OPEN -> See page 25 of RFC 6455
 
-async def ws_reader(reader, writer, wsc, writer_queue, state):
+async def ws_reader(reader, writer, wsc, writer_queue):
 
    logging.debug('ws_reader started')
 
    while not wsc.close:
 
        # wait for a connection upgrade request.
-       if state['conn_state'] == WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST:
+       logging.info(f'state: {wsc.state}')
+       if wsc.state is WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST:
            # wait for a completed connection upgrade
            request = (await reader.readuntil(b'\r\n\r\n')).decode()
-           #- logging.debug(f'request: {request}')
            wsc.process_upgrade_request(request)
            # Put an upgrade request reply into the writer queue
            # print(f'response: {wsc.response}')
@@ -31,9 +31,10 @@ async def ws_reader(reader, writer, wsc, writer_queue, state):
               break
            else:
               logging.info('changing state to OPEN')
-              state['conn_state'] = WebSocketConnectionStates.OPEN
+              #- state['conn_state'] = WebSocketConnectionStates.OPEN
+              wsc.state = WebSocketConnectionStates.OPEN
 
-       elif state['conn_state'] == WebSocketConnectionStates.OPEN:
+       elif wsc.state is WebSocketConnectionStates.OPEN:
           #TODO will need to read the input one byte at a time (e.g. reader.read(1)) and pass
           #     each byte off to a new function (call it FrameReader) that assembles the incoming
           #     frame.  If the incoming frame is not legal then close the connection elsewise
@@ -64,7 +65,7 @@ async def ws_reader(reader, writer, wsc, writer_queue, state):
 
    logging.debug('ws_reader ended')
 
-async def ws_writer(writer, wsc, writer_queue, state):
+async def ws_writer(writer, wsc, writer_queue):
 
    print('ws_writer started')
    # The writer has access to transport information.
@@ -92,23 +93,29 @@ async def ws_writer(writer, wsc, writer_queue, state):
 # Each new TCP connection will put a new instance of connection on the stack. TODO - Is python stacked base?
 async def connection(reader, writer):
 
+   """-
    # Setup call backs
    # TODO - add extension data structions and processing.
    def is_valid_extension(extension_code):
       logging.info('TODO - Implement extension validity checker')
       return True
-
+   # TODO - Instead of having this business of a connection dictionary with call backs
+   #        instead create a Message Controller that provides the messaging services
+   #        such as is_valid_extension.
    connection = {}
    connection['is_valid_extension'] = is_valid_extension
+   """
 
-   wsc = Wsc(connection)
+   wsc = Wsc()
    writer_queue = Queue()
 
+   """-
    state = {}
    state['conn_state'] = WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST 
+   """
 
-   task1 = asyncio.create_task(ws_reader(reader, writer, wsc, writer_queue, state))
-   task2 = asyncio.create_task(ws_writer(writer, wsc, writer_queue, state))
+   task1 = asyncio.create_task(ws_reader(reader, writer, wsc, writer_queue))
+   task2 = asyncio.create_task(ws_writer(writer, wsc, writer_queue))
 
    # Both task1 and task are run conncurrently.
    # TODO - The writer (task2) will have a sleepy loop that
