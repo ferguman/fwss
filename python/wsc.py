@@ -26,7 +26,6 @@ class Wsc():
       # If no values are set in self.server_opening_handshake then the 501 Not Implemented response
       # should be returned.
       
-      #- self.read_client_upgrade_request(request)
       self.upgrade.read_client_upgrade_request(request)
 
       logging.debug(f'abort: {self.upgrade.server_opening_handshake["abort"]}')
@@ -34,7 +33,6 @@ class Wsc():
       logging.debug(f'headers: {self.upgrade.server_opening_handshake["headers"]}')
 
       # Scan the values in self.server_opening_handshake and create the appropriate HTTP response. 
-      #- self.make_response()  
       self.upgrade.make_response()  
       self.close = self.upgrade.close
       self.response = self.upgrade.response
@@ -44,14 +42,7 @@ class Wsc():
    def process_byte(self, next_byte):
       # log a byte
       self.frame_reader.process_byte(next_byte)
-      self.close = self.frame_reader.close
-
 
    def is_valid_extension(self, extension_code):
       logging.info('TODO - Implement extension validity checker')
       return True
-
-   """-
-   def state(self):
-       return self.state
-   """
