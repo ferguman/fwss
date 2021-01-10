@@ -35,6 +35,7 @@ class FrameReader():
       self.mask = False
       self.masking_key = None 
       self.payload = None
+      self.payload_byte_index = 0
 
    def process_byte(self, next_byte):
 
@@ -127,16 +128,17 @@ class FrameReader():
 
             return
 
-         #TODO - implement payload data reader.
-         #TODO - unmask inline as payload streams in.
          if self.next_expected_frame_part == FrameParts.PAYLOAD_DATA:
-            logging.debug(f'payload_data_length: {self.payload_data_length}')
-            if self.payload:
-               self.payload = self.payload + next_byte
+            if self.mask:
+               byte = self.masking_key[self.payload_byte_index % 4] ^ current_byte 
             else:
-               self.payload = next_byte
-            self.payload_data_length -= 1
-            if self.payload_data_length <= 0:
+               byte = current_byte
+            if self.payload:
+               self.payload.append(byte) 
+            else:
+               self.payload = bytearray(chr(byte), 'utf-8')
+            self.payload_byte_index += 1
+            if self.payload_byte_index >= self.payload_data_length:
                logging.debug(f'payload: {self.payload}')
                #TODO - need to figure out what happens here.
 
