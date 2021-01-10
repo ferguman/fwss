@@ -6,10 +6,6 @@ import logging
 from python.settings import READ_LIMIT_PER_CONNECTION
 from python.wsc import WebSocketConnectionStates, Wsc
 
-#- class WebSocketConnectionStates(Enum):
-#-    WAITING_FOR_UPGRADE_REQUEST = 1
-#-    OPEN = 2                           # OPEN -> See page 25 of RFC 6455
-
 async def ws_reader(reader, writer, wsc, writer_queue):
 
    logging.debug('ws_reader started')

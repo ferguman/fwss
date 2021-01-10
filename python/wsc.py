@@ -41,6 +41,9 @@ class Wsc():
 
    def process_byte(self, next_byte):
       # log a byte
+      # TODO - put a state machine here that looks for start and ends of frames and hanldes the FIN bit
+      #        it alos needs to pass frame data to the awaiting client - maybe as a stream maybe as a chunk.
+      #
       self.frame_reader.process_byte(next_byte)
 
    def is_valid_extension(self, extension_code):
