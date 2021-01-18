@@ -1,4 +1,5 @@
 # wsc -> Web Socket Controller
+# See https://www.websocket.org/echo.html for a tool to do websocket connections
 
 from enum import Enum
 import logging
@@ -19,6 +20,13 @@ class Wsc():
       self.frame_reader = FrameReader(self)
       self.close = False 
       self.response = None
+      self.payload = None
+
+   def append_to_payload(self, byte_to_append):
+      if self.payload:
+         self.payload.append(byte_to_append) 
+      else:
+         self.payload = bytearray(chr(byte_to_append), 'utf-8')
 
    def process_upgrade_request(self, request):
       # Scan the client request and if the request is valid then values will be
@@ -44,6 +52,7 @@ class Wsc():
       # TODO - put a state machine here that looks for start and ends of frames and hanldes the FIN bit
       #        it alos needs to pass frame data to the awaiting client - maybe as a stream maybe as a chunk.
       #
+
       self.frame_reader.process_byte(next_byte)
 
    def is_valid_extension(self, extension_code):
