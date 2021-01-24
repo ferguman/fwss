@@ -36,6 +36,7 @@ class FrameReader():
       self.masking_key = None 
       self.payload_byte_index = 0
 
+
    def parse_first_frame_byte(self, current_byte):
 
       logging.debug(f'FIN:{current_byte >> 7}')
@@ -128,13 +129,29 @@ class FrameReader():
    def parse_payload_byte(self, current_byte):
 
       if self.mask:
-         self.wsc.append_to_payload(self.masking_key[self.payload_byte_index % 4] ^ current_byte)
+         #- self.wsc.append_to_payload(self.masking_key[self.payload_byte_index % 4] ^ current_byte)
+         unmasked_byte = self.masking_key[self.payload_byte_index % 4] ^ current_byte 
+         #- return self.masking_key[self.payload_byte_index % 4] ^ current_byte
       else:
-         self.wsc.append_to_payload(current_byte)
+         unmasked_byte = current_byte
+         #- self.wsc.append_to_payload(current_byte)
+         #- return current_byte
 
       self.payload_byte_index += 1
       if self.payload_byte_index >= self.payload_data_length:
-         logging.debug(f'payload: {self.wsc.payload}')
+
+         # End of frame - start looking for the start of another frame.
+         self.final_fragment = None
+         self.extension_code = None
+         self.opcode = None
+         self.mask = False
+         self.masking_key = None 
+         self.payload_byte_index = 0
+         self.next_expected_frame_part = FrameParts.FIN
+
+         #- logging.debug(f'payload: {self.wsc.payload}')
+
+      return unmasked_byte
 
    def process_byte(self, next_byte):
 
@@ -164,7 +181,7 @@ class FrameReader():
 
          # Read payload data one byte at a time as it comes in on the stream.
          if self.next_expected_frame_part == FrameParts.PAYLOAD_DATA:
-            self.parse_payload_byte(current_byte)
+            return self.parse_payload_byte(current_byte)
 
       #TODO - need to figure out what happens here. any code that gets here is an error. the wsc should be
       #       telling this reader what state to go to or maybe teh read just goes to the start frame state 

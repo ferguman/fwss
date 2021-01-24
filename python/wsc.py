@@ -13,7 +13,7 @@ class WebSocketConnectionStates(Enum):
 
 class Wsc():
 
-   def __init__(self): 
+   def __init__(self, call_backs): 
 
       self.state = WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST 
       self.upgrade = Upgrade()
@@ -21,6 +21,8 @@ class Wsc():
       self.close = False 
       self.response = None
       self.payload = None
+
+      self.websocket_callbacks = call_backs
 
    def append_to_payload(self, byte_to_append):
       if self.payload:
@@ -53,7 +55,10 @@ class Wsc():
       #        it alos needs to pass frame data to the awaiting client - maybe as a stream maybe as a chunk.
       #
 
-      self.frame_reader.process_byte(next_byte)
+      payload_byte = self.frame_reader.process_byte(next_byte)
+
+      if payload_byte and self.websocket_callbacks['echo']:
+         self.websocket_callbacks['echo'](payload_byte)
 
    def is_valid_extension(self, extension_code):
       logging.info('TODO - Implement extension validity checker')

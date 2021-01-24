@@ -1,11 +1,27 @@
 import asyncio
 import logging
-from python.connection import connection
+#- from python.connection import connection
+from python.connection import App 
+#- from python.wsc import byte_stream
 
 logging.basicConfig(level=logging.DEBUG)
 
 async def main():
-   server = await asyncio.start_server(connection, '127.0.0.1', 8888)
+
+   # One and only one application instance exists for the lifetime of the application
+   app = App()
+
+
+   # Setup all web socket connections to echo their incoming bytes in the application log.
+   @app.echo
+   def echo(byte):
+      logging.info(f'echo byte: {chr(byte)}')
+
+   # connection is a function that takes two arguments: reader and writer.  
+   # server will call connection for each new connection supplying the reader and writer for 
+   # that particular connection.
+   #- server = await asyncio.start_server(connection, '127.0.0.1', 8888)
+   server = await asyncio.start_server(app.connection, '127.0.0.1', 8888)
 
    # addr is a tuple containing the IP number and port number
    addr = server.sockets[0].getsockname()

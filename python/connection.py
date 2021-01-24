@@ -85,42 +85,71 @@ async def ws_writer(writer, wsc, writer_queue):
 
    print('ws_writer ended')
       
+class App():
 
-# Each new TCP connection will put a new instance of connection on the stack. TODO - Is python stacked base?
+   #TODO 
+   #     Rename the containing file as app.py
+   #     Read the async io docks for the server object. See what they say about
+   #     supplying a class as the connection attribure to the server instead of a method/function
+
+   def __init__(self):
+      self.call_backs = {}
+
+
+   # supply a app decorator that will supply payload bytes as they arrive
+   # one at a time.
+   def echo(self, f):
+
+      self.call_backs['echo'] = f
+
+      def echo_function(byte):
+         f(btye)
+
+      return f
+
+   # Decorator that supplies a line reader that returns text payload lines
+   # one at a time as they arrive.
+   def line_reader(self, f):
+      pass
+
+   # Decorator that supplies a json reader that scans incomming text for Json
+   # defined by json_definition and returns compeled json instances as they arrive.
+   def json_reader(self, json_definition):
+      pass
+
+   # Each new TCP connection will call connection and supply the reader and writer for that
+   # connection.
+   async def connection(self, reader, writer):
+
+      wsc = Wsc(self.call_backs)
+      writer_queue = Queue()
+
+      task1 = asyncio.create_task(ws_reader(reader, writer, wsc, writer_queue))
+      task2 = asyncio.create_task(ws_writer(writer, wsc, writer_queue))
+
+      # Both task1 and task2 are run concurrently. As long as either task has not returned
+      # then this connection function invocation will not return.
+      await task1 
+      await task2 
+
+      # close the TCP connection.
+      writer.close()
+"""-
+# Each new TCP connection will call connection and supply the reader and writer for that
+# connection.
 async def connection(reader, writer):
-
-   """-
-   # Setup call backs
-   # TODO - add extension data structions and processing.
-   def is_valid_extension(extension_code):
-      logging.info('TODO - Implement extension validity checker')
-      return True
-   # TODO - Instead of having this business of a connection dictionary with call backs
-   #        instead create a Message Controller that provides the messaging services
-   #        such as is_valid_extension.
-   connection = {}
-   connection['is_valid_extension'] = is_valid_extension
-   """
 
    wsc = Wsc()
    writer_queue = Queue()
 
-   """-
-   state = {}
-   state['conn_state'] = WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST 
-   """
-
    task1 = asyncio.create_task(ws_reader(reader, writer, wsc, writer_queue))
    task2 = asyncio.create_task(ws_writer(writer, wsc, writer_queue))
 
-   # Both task1 and task are run conncurrently.
-   # TODO - The writer (task2) will have a sleepy loop that
-   #        that looks for outgoing traffic such as server
-   #        responses to data reads and asyncrouns events such 
-   #        as incoming MQQT messages.
+   # Both task1 and task2 are run concurrently. As long as either task has not returned
+   # then this connection function invocation will not return.
    await task1 
    await task2 
 
    # close the TCP connection.
    writer.close()
-
+"""
