@@ -1,3 +1,7 @@
+*.egg
+*.egg-info/*.*
+*.egg-info
+dist/*.*
 *.swp
 *.pyc
 logs/*.*

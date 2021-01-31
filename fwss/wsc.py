@@ -4,8 +4,8 @@
 from enum import Enum
 import logging
 
-from python.frame_reader import FrameReader
-from python.upgrade import Upgrade
+from fwss.frame_reader import FrameReader
+from fwss.upgrade import Upgrade
 
 class WebSocketConnectionStates(Enum):
    WAITING_FOR_UPGRADE_REQUEST = 1

@@ -4,8 +4,8 @@ from hashlib import sha1
 from http import HTTPStatus
 import logging
 
-from python.settings import ALLOW_NULL_SUB_PROTOCOLS
-from python.utility import log_print
+from fwss.settings import ALLOW_NULL_SUB_PROTOCOLS
+from fwss.utility import log_print
 
 class Upgrade():
 
