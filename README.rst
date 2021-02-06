@@ -14,7 +14,7 @@ A websocket server based upon the Python asyncio library
    - Create a virtual environment - Python3.9 
    - pip install ../fwss/dist/fwss-0.1.tar.gz
 
-- Edit main.py and setup your local environment by speciging such things as the IP address of your server.
+- Edit config.py and setup your local environment by specifying such things as the IP address of your server.
 
 
 
