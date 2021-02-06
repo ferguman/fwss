@@ -3,7 +3,8 @@ from asyncio import Queue
 from enum import Enum
 import logging
 
-from fwss.settings import READ_LIMIT_PER_CONNECTION
+#- from fwss.settings import READ_LIMIT_PER_CONNECTION
+from config import get_config
 from fwss.wsc import WebSocketConnectionStates, Wsc
 
 class App():
@@ -104,7 +105,7 @@ class App():
                 # which case the task needs to break off in order to let the Python async runtime to let other tasks
                 # have a chance to run.
                 guard_counter += 1
-                if guard_counter >= READ_LIMIT_PER_CONNECTION:
+                if guard_counter >= get_config().READ_LIMIT_PER_CONNECTION:
                    break
 
           if not wsc.close:

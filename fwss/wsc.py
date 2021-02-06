@@ -7,6 +7,10 @@ import logging
 from fwss.frame_reader import FrameReader
 from fwss.upgrade import Upgrade
 
+# The Javascript API has the following connection state constants defined: 
+# CONNECTING, OPEN, CLOSING, CLOSED
+# Consider renamed WATING_FOR_UPGRADE_REQUEST to CLOSED.
+#
 class WebSocketConnectionStates(Enum):
    WAITING_FOR_UPGRADE_REQUEST = 1
    OPEN = 2                           # OPEN -> See page 25 of RFC 6455

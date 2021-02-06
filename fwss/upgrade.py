@@ -4,8 +4,10 @@ from hashlib import sha1
 from http import HTTPStatus
 import logging
 
-from fwss.settings import ALLOW_NULL_SUB_PROTOCOLS
+# from fwss.settings import ALLOW_NULL_SUB_PROTOCOLS
+from config import get_config
 from fwss.utility import log_print
+
 
 class Upgrade():
 
@@ -156,7 +158,7 @@ class Upgrade():
       # This implementation does not accept a mixture of the above.
       # 	
       if not 'sec-websocket-protocol' in self.opening_handshake_headers:
-         if ALLOW_NULL_SUB_PROTOCOLS:
+         if get_config().ALLOW_NULL_SUB_PROTOCOLS:
              # Do not return a sub-protocol header to the client. This signals the acceptance of a connection with no sub-protocol specified.
              pass 
          else:
@@ -230,6 +232,19 @@ class Upgrade():
       # TODO - Add the security checks here. Start with a flat file holding encrypted usernames and encrytped passwords. 
       #        Actually security should be imposed before any processing is done so move this stuff to
       #        to be sooner in the process.
+
+
+      # The Web Socket specification allows for HTTP level authentication however the Javascript API (see:
+      # https://developer.mozilla.org/en-US/docs/Web/API/WebSocket) does not appear to support setting authenticationg
+      # data as part of the connection process. 
+      # See https://stackoverflow.com/questions/4361173/http-headers-in-websockets-client-api for more information.
+      # 
+      #
+      # TODO - Cookies would work fine I think assuming the client is logged onto a website that has set a cookie 
+      #        ahead of time and such cookie can be inspected by the websocket server.
+      # 
+      # TODO - A JWT passed via a bearer header would also work.
+      #
       if not self.read_client_opening_handshake():
          logging.info('Not a valid opening handshake')
          return False
