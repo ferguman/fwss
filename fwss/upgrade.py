@@ -164,7 +164,38 @@ class Upgrade():
          else:
             logging.error('No sub-protocal header was detected. fwss is configured to require the Sec-WebSocket-Protocol header in the client handshake.') 
             return False
-      # else
+      # TODO - the sub protocol header from the client wehen set to JWT:FOOBAR,JWT is working.  Now need
+      #        to extend the following processing to find the jwt info in the list of sub protocols sent by the 
+      #        client.
+      elif get_config().LOOK_FOR_JWT_IN_SUBPROTOCOL:
+          subprotocols = self.opening_handshake_headers['sec-websocket-protocol'].split(',') 
+          # TODO at this point we only know about JWT authentication sub protocol
+          jwt_info = subprotocols[0].split(':') 
+          if len(jwt_info) == 2:
+             if jwt_info[0] == 'JWT':
+                if jwt_info[1] == 'FOOBAR':  # this is intended to be the actual base64 jwt
+                   # TODO - JWT authentication happens here.
+                   logging.info('JWT authentication success')
+                   self.server_opening_handshake['headers']['sec-websocket-protocol'] = get_config().SERVER_SUB_PROTOCOL_VALUE 
+                else:
+                   # JWT autntication syntax is not right.
+                   logging.error('Bad JWT token')
+                   self.server_opening_handshake['http_status_code'] = HTTPStatus.UNAUTHORIZED
+                   return False
+             else:
+                logging.error('First part of jwt_info must be JWT')
+                self.server_opening_handshake['http_status_code'] = HTTPStatus.UNAUTHORIZED
+                return False
+          else:
+             logging.error('Improper jwt_info detected')
+             self.server_opening_handshake['http_status_code'] = HTTPStatus.UNAUTHORIZED
+             return False
+      else:
+          logging.error('unsupported protocol')
+          self.server_opening_handshake['http_status_code'] = HTTPStatus.NOT_ACCEPTABLE
+          return False
+
+
       #    if one header field present
       #       foreach sub-filed (comma seperated)
       #          if sub filed values are less than configuration max length, not blank, and contain only characters in rage U+0021 to U+007E then

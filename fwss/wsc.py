@@ -37,8 +37,6 @@ class Wsc():
    def process_upgrade_request(self, request):
       # Scan the client request and if the request is valid then values will be
       # set in self.server_opening_handshake. The scanning process is halted at the first error found.
-      # If no values are set in self.server_opening_handshake then the 501 Not Implemented response
-      # should be returned.
       
       self.upgrade.read_client_upgrade_request(request)
 
@@ -46,7 +44,7 @@ class Wsc():
       logging.debug(f'http status code: {self.upgrade.server_opening_handshake["http_status_code"]}')
       logging.debug(f'headers: {self.upgrade.server_opening_handshake["headers"]}')
 
-      # Scan the values in self.server_opening_handshake and create the appropriate HTTP response. 
+      # The Upgrade object contains the results of processing the upgrade request in including the server response.
       self.upgrade.make_response()  
       self.close = self.upgrade.close
       self.response = self.upgrade.response
