@@ -38,36 +38,18 @@ class App():
    def json_reader(self, json_definition):
       pass
 
-   # Each new TCP connection will call connection and supply the reader and writer for that
-   # connection.
-   async def connection(self, reader, writer):
 
-      wsc = Wsc(self.call_backs)
-      writer_queue = Queue()
-
-      #- task1 = asyncio.create_task(ws_reader(reader, writer, wsc, writer_queue))
-      #- task2 = asyncio.create_task(ws_writer(writer, wsc, writer_queue))
-      task1 = asyncio.create_task(self.ws_reader(reader, writer, wsc, writer_queue))
-      task2 = asyncio.create_task(self.ws_writer(writer, wsc, writer_queue))
-
-      # Both task1 and task2 are run concurrently. As long as either task has not returned
-      # then this connection function invocation will not return.
-      await task1 
-      await task2 
-
-      # close the TCP connection.
-      #- writer.write_eof()
-      writer.close()
-      await writer.wait_closed()
-
-   async def ws_reader(self, reader, writer, wsc, writer_queue):
+   async def ws_reader(self, reader, connection_state, writer, wsc, writer_queue):
 
       logging.debug('ws_reader started')
 
-      while not wsc.close:
+      rread_stream_open = True
+
+      while not wsc.close and connection_state['read_stream_open']:
 
           # wait for a connection upgrade request.
           logging.info(f'state: {wsc.state}')
+
           if wsc.state is WebSocketConnectionStates.WAITING_FOR_UPGRADE_REQUEST:
               # wait for a completed connection upgrade
               request = (await reader.readuntil(b'\r\n\r\n')).decode()
@@ -93,7 +75,13 @@ class App():
              guard_counter = 0
              while not reader.at_eof():
 
+
                 next_byte = await reader.read(1)
+
+                # The Python streamreader returned None when - Assume that the underlying connection is closed.
+                if not next_byte:
+                    logging.info(f'Reader returned nothing - assume the connection closed')
+                    connection_state['read_stream_open'] = False 
 
                 wsc.process_byte(next_byte)
                 if wsc.close:
@@ -110,19 +98,21 @@ class App():
                 if guard_counter >= get_config().READ_LIMIT_PER_CONNECTION:
                    break
 
+          # We are still in the while looping waiting on a wsc.close state of true.
           if not wsc.close:
              await asyncio.sleep(1)
 
       logging.debug('ws_reader ended')
 
-   async def ws_writer(self, writer, wsc, writer_queue):
 
-      print('ws_writer started')
+   async def ws_writer(self, writer, connection_state, wsc, writer_queue):
+
+      logging.info('ws_writer started')
+
       # The writer has access to transport information.
-      print(f'transport info {writer.get_extra_info("socket")}')
+      logging.info(f'transport info {writer.get_extra_info("socket")}')
 
-      #- while True:
-      while not wsc.close:
+      while not wsc.close and connection_state['read_stream_open']:
 
          if (not writer_queue.empty()):
             writer.write(await writer_queue.get())
@@ -131,4 +121,28 @@ class App():
          if not wsc.close:
             await asyncio.sleep(1)
 
-      print('ws_writer ended')
+      logging.info('ws_writer ended')
+
+
+   # Each new TCP connection will call connection and supply the reader and writer for that
+   # connection.
+   async def connection(self, reader, writer):
+
+      wsc = Wsc(self.call_backs)
+      writer_queue = Queue()
+
+      connection_state = {}
+      connection_state['read_stream_open'] = True
+
+      # Create and start the reader and writer tasks
+      task1 = asyncio.create_task(self.ws_reader(reader, connection_state, writer, wsc, writer_queue))
+      task2 = asyncio.create_task(self.ws_writer(writer, connection_state, wsc, writer_queue))
+
+      # Block until both the reader and writer return.
+      await task1 
+      await task2 
+
+      # close the TCP connection.
+      #- writer.write_eof()
+      #? writer.close()
+      #? await writer.wait_closed()

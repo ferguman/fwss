@@ -1,8 +1,12 @@
 from dataclasses import dataclass
+from enum import Enum
 from functools import lru_cache
 
 # This stuff is adapted from: https://leontrolski.github.io/sane-config.html
 # There is a test websocket client at https://www.websocket.org/echo.html
+
+class SecurityImplementations(Enum):
+   PLAIN_TEXT_PASSCODE = 1
 
 @dataclass
 class Config:
@@ -23,11 +27,14 @@ class Config:
    # after some reasonable and finite number of input bytes have been read thus terminating
    # the current loop iteration of the impacted connection.
    READ_LIMIT_PER_CONNECTION: int  
+   # Used for PLAIN_TEXT_PASSCODE security implementations.
+   PLAIN_TEXT_PASSCODE: str
+   # Choose a security implementation for your websocket server
+   SECURITY_IMPLEMENTATION: int
    # The value to return to clients as a sub protocol. As per the specification, if a client sends
    # a subprotocol list then one of the values must be returned. That one value goes here.  
    SERVER_SUB_PROTOCOL_VALUE: int
    
-
 
    #TODO - Implement CORS based security. I think uyou will put a list of acceptibel orign values here, 
    # or maybe a regular expression or mabye a cors lambda.
@@ -46,6 +53,8 @@ def get_config() -> Config:
          JWT_SECRET = 'TODO - implment JWT',
          LOOK_FOR_JWT_IN_SUBPROTOCOL = True, 
          MAXIMUM_PAYLOAD_LENGTH = 1000,
+         PLAIN_TEXT_PASSCODE = 'asdwedkljadl84asdfadsi',
          READ_LIMIT_PER_CONNECTION = 1000, 
+         SECURITY_IMPLEMENTATION = SecurityImplementations.PLAIN_TEXT_PASSCODE, 
          SERVER_SUB_PROTOCOL_VALUE = 'JWT'
    )

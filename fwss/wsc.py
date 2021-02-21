@@ -44,6 +44,11 @@ class Wsc():
       logging.debug(f'http status code: {self.upgrade.server_opening_handshake["http_status_code"]}')
       logging.debug(f'headers: {self.upgrade.server_opening_handshake["headers"]}')
 
+      # Enforce security
+      # TODO refactor upgrade class to contin the folowwing method. Then
+      # implement the PLAIN_TEXT_PASSCODE security sub-protocol. 
+      self.upgrade.enforce_security()
+
       # The Upgrade object contains the results of processing the upgrade request in including the server response.
       self.upgrade.make_response()  
       self.close = self.upgrade.close
@@ -56,11 +61,12 @@ class Wsc():
       # TODO - put a state machine here that looks for start and ends of frames and hanldes the FIN bit
       #        it alos needs to pass frame data to the awaiting client - maybe as a stream maybe as a chunk.
       #
-
+      """+
       payload_byte = self.frame_reader.process_byte(next_byte)
-
+      logging.debug(f'next_byte: {next_byte}')
       if payload_byte and self.websocket_callbacks['echo']:
          self.websocket_callbacks['echo'](payload_byte)
+     """
 
    def is_valid_extension(self, extension_code):
       logging.info('TODO - Implement extension validity checker')

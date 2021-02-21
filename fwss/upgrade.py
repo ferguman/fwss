@@ -280,24 +280,37 @@ class Upgrade():
       if not self.read_client_opening_handshake():
          logging.info('Not a valid opening handshake')
          return False
-
+      
+      """-
       # At this point we have a reasonable client handshake. We may still abort the connection but
       # we will go ahead and build the server's handshake and during that build if need be an abort will
       # be indicated. Note an abort may have a response and always closes the TCP/IP connection.
       if not self.make_server_opening_handshake():
          return False 
+     """
 
       self.server_opening_handshake['abort'] = False
       return True 
 
+   def enforce_security(self):
+      pass
+
    def make_response(self):
 
       if 'abort' in self.server_opening_handshake and self.server_opening_handshake['abort'] == False:
-         self.close = False
-         logging.debug('Leave client socket open')
+         # At this point we have a reasonable client handshake. We may still abort the connection but
+         # we will go ahead and build the server's handshake and during that build if need be an abort will
+         # be indicated. Note an abort may have a response and always closes the TCP/IP connection.
+         self.close = not self.make_server_opening_handshake()
+
+         #-self.close = False
+         if self.close:
+            logging.debug('Cannot  make a response. Close the client connection.')
+         else:
+            logging.debug('Leave the client connection open.')
       else:
          self.close = True
-         logging.debug('Close the client socket')
+         logging.debug('Cannot read the upgrade response. Close the client connection')
 
       if 'http_status_code' in self.server_opening_handshake:
          self.response = 'HTTP/1.1 {} {}\r\n'.format(self.server_opening_handshake['http_status_code'].value,
