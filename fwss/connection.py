@@ -56,7 +56,9 @@ class App():
       await task2 
 
       # close the TCP connection.
+      #- writer.write_eof()
       writer.close()
+      await writer.wait_closed()
 
    async def ws_reader(self, reader, writer, wsc, writer_queue):
 
@@ -73,8 +75,8 @@ class App():
               # Put an upgrade request reply into the writer queue
               # print(f'response: {wsc.response}')
               await writer_queue.put(wsc.response)
-              # At this point if the upgrade request fails then close your loop becuase
-              # because the connection must be closed.
+              # At this point if the upgrade request fails then close your loop because
+              # the connection must be closed.
               if wsc.close:
                  break
               else:
@@ -126,12 +128,6 @@ class App():
             writer.write(await writer_queue.get())
             await writer.drain()
          
-            """-
-            if wsc.close:
-                writer.close()
-                break
-            """
-
          if not wsc.close:
             await asyncio.sleep(1)
 

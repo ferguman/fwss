@@ -150,6 +150,7 @@ class Upgrade():
          self.server_opening_handshake['abort'] = True
          return False
 
+
       #TODO: Add the sub-protocol negotiation here.
       # See RFC 6455 page(s): 18, 23, 58
       # Map the null header field to the console.urbanspacefarms.com application
