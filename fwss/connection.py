@@ -9,41 +9,35 @@ from fwss.wsc import WebSocketConnectionStates, Wsc
 
 class App():
 
-   #TODO 
-   #     Rename the containing file as app.py
-   #     Read the async io docks for the server object. See what they say about
-   #     supplying a class as the connection attribure to the server instead of a method/function
+   #TODO Rename the containing file as app.py
 
    def __init__(self):
       self.call_backs = {}
-
 
    # supply a app decorator that will supply payload bytes as they arrive
    # one at a time.
    # See https://ains.co/blog/things-which-arent-magic-flask-part-1.html for an explanation of
    # how decorators work in Flask
    def echo(self, f):
-
       self.call_backs['echo'] = f
-
       return f
 
    # Decorator that supplies a line reader that returns text payload lines
    # one at a time as they arrive.
    def line_reader(self, f):
-      pass
+      self.call_backs['line_reader'] = f
+      return f
 
    # Decorator that supplies a json reader that scans incomming text for Json
    # defined by json_definition and returns compeled json instances as they arrive.
    def json_reader(self, json_definition):
       pass
 
-
    async def ws_reader(self, reader, connection_state, writer, wsc, writer_queue):
 
       logging.debug('ws_reader started')
 
-      rread_stream_open = True
+      read_stream_open = True
 
       while not wsc.close and connection_state['read_stream_open']:
 
@@ -74,7 +68,6 @@ class App():
              # Read a byte
              guard_counter = 0
              while not reader.at_eof():
-
 
                 next_byte = await reader.read(1)
 
@@ -128,6 +121,7 @@ class App():
    # connection.
    async def connection(self, reader, writer):
 
+      # The per connection state goes here. Each connection gets its own Wsc instance.
       wsc = Wsc(self.call_backs)
       writer_queue = Queue()
 

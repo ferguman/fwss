@@ -129,13 +129,9 @@ class FrameReader():
    def parse_payload_byte(self, current_byte):
 
       if self.mask:
-         #- self.wsc.append_to_payload(self.masking_key[self.payload_byte_index % 4] ^ current_byte)
          unmasked_byte = self.masking_key[self.payload_byte_index % 4] ^ current_byte 
-         #- return self.masking_key[self.payload_byte_index % 4] ^ current_byte
       else:
          unmasked_byte = current_byte
-         #- self.wsc.append_to_payload(current_byte)
-         #- return current_byte
 
       self.payload_byte_index += 1
       if self.payload_byte_index >= self.payload_data_length:

@@ -29,11 +29,14 @@ class Config:
    READ_LIMIT_PER_CONNECTION: int  
    # Used for PLAIN_TEXT_PASSCODE security implementations.
    PLAIN_TEXT_PASSCODE: str
-   # Choose a security implementation for your websocket server
+   # Choose a security implementation for your websocket server 
+   # For PLAIN_TEXT_PASSCODE pass the info on the subprocotol header as:
+   #    PASSPHRASE:[pass code], [this server's SERVER_SUB_PROTOCOL_VALUE] -> PASSPHRASE:foobar,LINE_READER
+   #
    SECURITY_IMPLEMENTATION: int
    # The value to return to clients as a sub protocol. As per the specification, if a client sends
    # a subprotocol list then one of the values must be returned. That one value goes here.  
-   SERVER_SUB_PROTOCOL_VALUE: int
+   SERVER_SUB_PROTOCOL_VALUE: str 
    
 
    #TODO - Implement CORS based security. I think uyou will put a list of acceptibel orign values here, 
@@ -47,14 +50,14 @@ class Config:
 @lru_cache(None)
 def get_config() -> Config:
    return Config(
-         ALLOW_NULL_SUB_PROTOCOLS = True,
+         ALLOW_NULL_SUB_PROTOCOLS = False,
          IP_NUMBER = '127.0.0.1',
          IP_PORT_NUMBER = 8888,
          JWT_SECRET = 'TODO - implment JWT',
          LOOK_FOR_JWT_IN_SUBPROTOCOL = True, 
          MAXIMUM_PAYLOAD_LENGTH = 1000,
-         PLAIN_TEXT_PASSCODE = 'asdwedkljadl84asdfadsi',
+         PLAIN_TEXT_PASSCODE = '',
          READ_LIMIT_PER_CONNECTION = 1000, 
          SECURITY_IMPLEMENTATION = SecurityImplementations.PLAIN_TEXT_PASSCODE, 
-         SERVER_SUB_PROTOCOL_VALUE = 'JWT'
+         SERVER_SUB_PROTOCOL_VALUE = 'LINE_READER'
    )

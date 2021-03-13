@@ -25,6 +25,7 @@ class Wsc():
       self.close = False 
       self.response = None
       self.payload = None
+      self.current_line = '' 
 
       self.websocket_callbacks = call_backs
 
@@ -59,14 +60,25 @@ class Wsc():
    def process_byte(self, next_byte):
       # log a byte
       # TODO - put a state machine here that looks for start and ends of frames and hanldes the FIN bit
-      #        it alos needs to pass frame data to the awaiting client - maybe as a stream maybe as a chunk.
+      #        it alos needs to pass frame data to the awaiting clients.
       #
-      """+
+
+      # Send the current byte to the frame reader. If the frame reader sees that it is a payload
+      # byte then it will return it other wise it will return nothing.
+      #+ logging.debug(f'next_byte: {next_byte}')
       payload_byte = self.frame_reader.process_byte(next_byte)
-      logging.debug(f'next_byte: {next_byte}')
-      if payload_byte and self.websocket_callbacks['echo']:
+
+      #- if payload_byte and self.websocket_callbacks['echo']:
+      if payload_byte and 'echo' in self.websocket_callbacks:
          self.websocket_callbacks['echo'](payload_byte)
-     """
+
+      if payload_byte and 'line_reader' in self.websocket_callbacks:
+         # Look for the \n character.
+         if payload_byte == 0x0a:
+            self.websocket_callbacks['line_reader'](self.current_line)
+            self.current_line = '' 
+         else:
+            self.current_line = self.current_line + chr(payload_byte)
 
    def is_valid_extension(self, extension_code):
       logging.info('TODO - Implement extension validity checker')
