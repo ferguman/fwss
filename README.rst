@@ -19,14 +19,13 @@ A websocket server based upon the Python asyncio library
 2. Clone fwss
 
    The following commands are illustrative of downloading the fwss from github and create a distribution package.  The distribution package will create a file archive that can be loaded to your server environment.
-   
-.. codeblock:: bash
+::
 
    cd ~
    github clone fwss  
    python3.9 setup.py sdist
-
-   The above commands are explained one by one below:
+ 
+The above commands are explained one by one below:
    
    cd ~ -> Connect to the home directory on the machine that you will be downloading the fwss source code to.
    
