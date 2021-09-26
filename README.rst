@@ -1,30 +1,46 @@
 A websocket server based upon the Python asyncio library
 
-# Setup
+---------------
+ Setup
+---------------
 
-- Get a webserver 
-It is assumed that the websocket server will be a proxy client to publicly exposed web server such as nginx.  Here is a snippet from an nginx coniguration file that demonstrates how to setup nginx to proxy web traffic to the fwss websocket server.  Note that we configure nginx to pass the upgrade Http header to fwss so that it can properly negotiate upgrading to the WebSocket protocol from a normal HTTP connection.
+1. Get a web server 
+
+   It is assumed that the fwss websocket server will be proxied by a publicly exposed web server such as nginx.  Here is a snippet from an nginx coniguration file that demonstrates how to setup nginx to proxy web traffic to the fwss websocket server.  Note that we configure nginx to pass the upgrade Http header to fwss so that it can properly negotiate upgrading to the WebSocket protocol from a normal HTTP connection.
 ::
 
-   location /wss/ {
+  location /wss/ {
         proxy_pass http://127.0.0.1:8888;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-    }
-    
+  }
 
-- Clone fwss - github clone fwss - This will create a directory named fwss containing the source code for fwss 
+2. Clone fwss
+
+   The following commands are illustrative of downloading the fwss from github and create a distribution package.  The distribution package will create a file archive that can be loaded to your server environment.
    
-   - python3.9 setup.py sdist - this will create distribution package
+.. codeblock:: bash
 
-- Create a directory on the webserver (e.g. mkdir ~/fwss_instance_1) - this is where your fwss powered 
+   cd ~
+   github clone fwss  
+   python3.9 setup.py sdist
+
+   The above commands are explained one by one below:
+   
+   cd ~ -> Connect to the home directory on the machine that you will be downloading the fwss source code to.
+   
+   github clone fwss -> This command will create a directory named fwss and download the code from github to this directory.
+   
+   python3.9 setup.py sdist -> This command will run setup.py which will create a distribution package which is an archive file containing the source code for fwss along with all the necessary libraries.
+
+3. Create a directory on the webserver (e.g. mkdir ~/fwss_instance_1) - this is where your fwss powered 
   web socket server code will reside.
 
    - Create a virtual environment - Python3.9 
    - pip install ../fwss/dist/fwss-0.1.tar.gz
 
-- Edit config.py and setup your local environment by specifying such things as the IP address of your server.
+4. Edit config.py and setup your local environment by specifying such things as the IP address of your server.
 
 
 
