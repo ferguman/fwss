@@ -1,3 +1,6 @@
+# This program will create a distribution package which is an archive file containing the source code for fwss along with all the necessary libraries. 
+# Note that any python version later than 3.6 should work. Type python3 --version on your system to see what version of Python 3 is installed.
+
 from setuptools import setup
 
 setup (

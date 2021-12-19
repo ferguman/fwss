@@ -12,6 +12,8 @@
      }
 ```
 
+In the above configuration we tell nginx to proxy request URLs that end in /wss/ to the 127.0.0.1 IP address (loop back) on port 8888. The steps below contain information on how to install fwss as a server running at this IP port.
+
 
 2. Clone fwss
 

@@ -15,11 +15,13 @@ async def main():
        using hte echo function dectorator.
    """
    # Remote line readers.
+   # TODO - make is so that line_reader signature is line_reader(reader, writer)
+   #        reader wil have method: reader.readline().  Writer will have method
+   #        writer.writeline().  Abstract so that it is a general reader. readchar or readline
+   #        etc.
    @app.line_reader
    def line_reader(line):
       logging.info(f'######### received: {line}')
-
-
 
    """ One can configure the system to call a custom function after the reception of each byte
        useing the echo function dectorator.

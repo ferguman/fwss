@@ -2,8 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
 
-# This stuff is adapted from: https://leontrolski.github.io/sane-config.html
-# There is a test websocket client at https://www.websocket.org/echo.html
+# This configuration code is adapted from: https://leontrolski.github.io/sane-config.html
 
 class SecurityImplementations(Enum):
    PLAIN_TEXT_PASSCODE = 1
@@ -31,8 +30,11 @@ class Config:
    PLAIN_TEXT_PASSCODE: str
    # Choose a security implementation for your websocket server 
    # For PLAIN_TEXT_PASSCODE pass the info on the subprocotol header as:
-   #    PASSPHRASE:[pass code], [this server's SERVER_SUB_PROTOCOL_VALUE] -> PASSPHRASE:foobar,LINE_READER
+   #    PASSPHRASEpass code, [this server's SERVER_SUB_PROTOCOL_VALUE] -> PASSPHRASEfoobar,LINE_READER
    #
+   # Note that putting the passphrase in the sub protocol field list is a hack and there are constraints
+   # imposed by the web socket spec. For example sub protocal fields cannot contain seperator characters such
+   # as : or @
    SECURITY_IMPLEMENTATION: int
    # The value to return to clients as a sub protocol. As per the specification, if a client sends
    # a subprotocol list then one of the values must be returned. That one value goes here.  
@@ -56,7 +58,7 @@ def get_config() -> Config:
          JWT_SECRET = 'TODO - implment JWT',
          LOOK_FOR_JWT_IN_SUBPROTOCOL = True, 
          MAXIMUM_PAYLOAD_LENGTH = 1000,
-         PLAIN_TEXT_PASSCODE = '',
+         PLAIN_TEXT_PASSCODE = 'foo',
          READ_LIMIT_PER_CONNECTION = 1000, 
          SECURITY_IMPLEMENTATION = SecurityImplementations.PLAIN_TEXT_PASSCODE, 
          SERVER_SUB_PROTOCOL_VALUE = 'LINE_READER'
